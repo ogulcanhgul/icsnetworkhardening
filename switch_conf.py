@@ -607,7 +607,7 @@ audit_for_lines()
 
 audit_telnet()
 
-audit_for_vty_acl
+audit_for_vty_acl()
 
 audit_password_strenght()
 
