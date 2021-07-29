@@ -141,12 +141,12 @@ def audit_for_lines():
         sshses = True
 
     if(console==False):
-        a = input("Cihaz üzerinde konsol bağlantıları için zaman aşımı konfigüre edilmemiş. Konfigüre etmek ister misiniz? EVET[1] HAYIR[2]")
+        a = input("Cihaz üzerinde konsol bağlantıları için zaman aşımı konfigüre edilmemiş. Konfigüre etmek ister misiniz? EVET[1] HAYIR[2] ")
         if a==str(1):
             do_console_timeout()
 
     if(sshses==False):
-        a = input("Cihaz üzerinde uzak bağlantılar için zaman aşımı konfigüre edilmemiş. Konfigüre etmek ister misiniz? EVET[1] HAYIR[2]")
+        a = input("Cihaz üzerinde uzak bağlantılar için zaman aşımı konfigüre edilmemiş. Konfigüre etmek ister misiniz? EVET[1] HAYIR[2] ")
         if a==str(1):
             do_ssh_timeout()
 
@@ -175,7 +175,7 @@ def audit_for_vty_acl():
         acl_conf = True
 
     if acl_conf == False:
-        a = input("Uzak terminal oturumları için access list konfigüre edilmemiş. Konfigüre etmek ister misiniz? EVET[1] HAYIR[2]")
+        a = input("Uzak terminal oturumları için access list konfigüre edilmemiş. Konfigüre etmek ister misiniz? EVET[1] HAYIR[2] ")
         if a==str(1):
             do_vty_acl()
 
@@ -198,32 +198,272 @@ def audit_password_strenght():
         pass_strength=True
 
     if pass_strength==False:
-        a = input("Güçlü şifre gereksinimleri konfigüre edilmemiş. Konfigüre etmek ister misiniz? EVET[1] HAYIR[2]")
+        a = input("Güçlü şifre gereksinimleri konfigüre edilmemiş. Konfigüre etmek ister misiniz? EVET[1] HAYIR[2] ")
         if a==str(1):
             do_password_strength()
 
 
-# def do_password_encryption():
-#
-#     passw = input("16-64 karakter sayisinda bir master key girin : ")
-#     config_commands = ['key config-key ascii',passw,passw]
-#     net_connect.send_config_set(config_commands)
-#     config_commands = ['feature password encryption aes']
-#     net_connect.send_config_set(config_commands)
-#
-#
-# def audit_password_encryption():
-#
-#     pass_encryption = False
-#     output = net_connect.send_command('show encryption service stat')
-#     if(str.__contains__(output,"not being used")):
-#         a = input("Şifreler clear-text formatında tutuluyor. AES şifrelemeyi konfigüre etmek ister misiniz? EVET[1] HAYIR[2]")
-#         if a==str(1):
-#             do_password_encryption()
+def do_userdef_lifetime():
+    sifre_omru = input("Bir sifrenin kullanım ömrünü gün olarak giriniz. ")
+    uyari = input("Sifrenin kullanım omru dolmadan kac gun onceden uyarılmaya baslamak istersiniz? ")
+    grace=input("Kullanım omru dolduktan sonra kac gune kadar girise izin verilmesini istersiniz? ")
+    config_commands = ['username '+username+' passphrase lifetime '+sifre_omru+' warntime '+uyari+' gradetime '+grace]
+    net_connect.send_config_set(config_commands)
+    print("Giris yaptiginiz kullanici icin sifre kullanim konfigürasyonu basariyla gerceklesti.")
 
+def do_default_lifetime():
+    sifre_omru = input("Bir sifrenin kullanım ömrünü gün olarak giriniz. ")
+    uyari = input("Sifrenin kullanım omru dolmadan kac gun onceden uyarılmaya baslamak istersiniz? ")
+    grace=input("Kullanım omru dolduktan sonra kac gune kadar girise izin verilmesini istersiniz? ")
+
+    config_commands = ['userpassphrase default-warntime '+uyari,'userpassphrase default-gracetime '+grace,'userpassphrase default-lifetime '+sifre_omru]
+    net_connect.send_config_set(config_commands)
+    print("Default sifre kullanim konfigürasyonu basariyla gerceklesti.")
+
+def audit_password_lifetime():
+
+    output = net_connect.send_command('sho username '+str(username)+' passphrase timevalues')
+    if str.__contains__(output, "99999"):
+        a = input("Giris yaptiginiz kullanici icin sifre ömrü konfigüre edilmemis. Konfigüre etmek ister misiniz? EVET[1] HAYIR[2] ")
+        if a==str(1):
+            do_userdef_lifetime()
+
+    output = net_connect.send_command('show userpassphrase timevalues')
+    if str.__contains__(output, "99999"):
+        a = input("Her kullanici icin(Default) sifre ömrü konfigüre edilmemis. Konfigüre etmek ister misiniz? EVET[1] HAYIR[2] ")
+        if a==str(1):
+            do_default_lifetime()
 
 # ************************************************************PASSWORD RULES END*******************************************************************************
 
+
+# ************************************************************SNMP RULES START*********************************************************************************
+
+def do_complex_community_str():
+
+    cstring = input("Lütfen karmasik bir community string giriniz. ")
+    config_commands = [' snmp-server community '+cstring+' ro']
+    net_connect.send_config_set(config_commands)
+    print("Community string başarıyla konfigüre edildi")
+
+
+def audit_snmp_version():
+
+    output = net_connect.send_command('sho snmp community')
+    snmpversion=0
+
+    if str.__contains__(output, "SNMPv1"):
+        snmpversion=1
+    elif str.__contains__(output, "SNMPv2"):
+        snmpversion=2
+    elif str.__contains__(output, "SNMPv3"):
+        snmpversion=3
+
+    if(snmpversion==2):
+        a = input("SnmpV2 kullaniyorsunuz. Yeni ve karmasik bir community string ayarlamak ister misiniz? EVET[1] HAYIR[2] ")
+        if(a==1):
+            do_complex_community_str()
+        elif a==2:
+            pass
+        else:
+            print("Gecersiz komut.")
+
+
+# ************************************************************SNMP RULES END*********************************************************************************
+
+
+# ************************************************************LOGGING RULES START****************************************************************************
+
+def do_log_server_conf():
+
+    server_ip = input("Kayıt sunucusunun ip veya ismini giriniz. ")
+    service_name = input("Kayıt altına alınacak servis isimleri giriniz. (snmpd, xml,aaa) gibi. ")
+    log_level = input("0-7 arası bir log derecesi girin. ")
+
+    config_commands = ['logging server '+server_ip,'logging level '+service_name+' '+log_level]
+    net_connect.send_config_set(config_commands)
+    print("Log sunucusu basariyla ayarlandi.")
+
+
+def audit_logging():
+
+    output = net_connect.send_command('sho logging server')
+    if str.__contains__(output, "disabled"):
+        a = input("Kayıtlar(loglar) bir sunucuya gönderilmiyor. Sunucu konfigürasyonu yapmak ister misiniz? EVET[1] HAYIR[2] ")
+        if a == str(1):
+            do_log_server_conf()
+
+
+# ************************************************************LOGGING RULES END**********************************************************************
+
+
+# ************************************************************LAYER2 RULES START*********************************************************************
+
+
+def do_dhcp_trust():
+
+    vlans = input("Etkinleştirmek istediginiz vlanleri giriniz. (100 veya 200-202 gibi) ")
+    trusted = input("Güvenilir port-channel giriniz (1-4096")
+    config_commands = ['ip dhcp snooping','ip dhcp snooping vlan '+vlans]
+    net_connect.send_config_set(config_commands)
+    config_commands = ['interface port-channel '+trusted,'ip dhcp snooping trust']
+    net_connect.send_config_set(config_commands)
+
+
+def audit_dhcp_trust():
+
+    output = net_connect.send_command('show running-config dhcp')
+    if str.__contains__(output, "service dhcp"):
+        if str.__contains__(output, "ip dhcp snooping"):
+            pass
+        else:
+            a = input("DHCP Trust konfigüre edilmemis. Konfigüre etmek ister misiniz? EVET[1] HAYIR[2] ")
+            if a == str(1):
+                do_dhcp_trust()
+
+# ************************************************************LAYER2 RULES END************************************************************************
+
+
+# ************************************************************BACKUPS START***************************************************************************
+
+def do_local_backup():
+
+    isim = input("İsim giriniz. ")
+    sure = input("Aylik yedekleme[1] Haftalik yedekleme[2] : ")
+
+    if sure==str(1):
+        ay = input("Her ay ayin kacinci gunu yedekleme yapmak istersiniz? (1-30)")
+        config_commands = ['feature scheduler','scheduler job name '+isim,'copy running-config startup-config']
+        net_connect.send_config_set(config_commands)
+        config_commands = ['scheduler schedule name '+isim,'time monthly '+ay]
+        net_connect.send_config_set(config_commands)
+
+    elif sure==str(2):
+        gun = input("Her hafta kacinci gun yedekleme yapmak istersiniz? (1-7) ")
+        config_commands = ['feature scheduler','scheduler job name '+isim,'copy running-config startup-config']
+        net_connect.send_config_set(config_commands)
+        onfig_commands = ['scheduler schedule name '+isim,'time weekly '+gun]
+        net_connect.send_config_set(config_commands)
+    else:
+        print("Gecersiz komut.")
+
+
+
+def local_backup_audit():
+
+    output = net_connect.send_command('sho scheduler job')
+    if str.__contains__(output,"Invalid"):
+        a = input("Yerel yedekleme konfigüre edilmemiş. Konfigüre etmek ister misiniz? EVET[1] HAYIR[2] ")
+        if a == str(1):
+            do_local_backup()
+    else:
+        if str.__contains__(output,"copy running-config startup-config"):
+            pass
+        else:
+            a = input("Yerel yedekleme konfigüre edilmemiş. Konfigüre etmek ister misiniz? EVET[1] HAYIR[2] ")
+            if a == str(1):
+                do_local_backup()
+
+
+
+# ************************************************************BACKUPS END**********************************************************************
+
+# ************************************************************VLAN SECURITY START**************************************************************
+
+def do_move_ports():
+
+    output = net_connect.send_command('show vlan br | section default')
+    print("**********************************************************************")
+    print(output)
+    print("**********************************************************************")
+    a = input("Yukarida default vlande gorunen portlari giriniz. (Eth2/2,Eth2/3...) ")
+    a = a.split(",")
+    vlan_num = input("Kullanilmayan bir vlan numarasi giriniz. ")
+    shut = input("Bu portları shutdown durumuna getirmek ister misiniz? EVET[1] HAYIR[2] ")
+
+    config_commands = ['vlan '+vlan_num,'no sh']
+    net_connect.send_config_set(config_commands)
+
+    for i in range(len(a)):
+        config_command1 = ['int '+a[i],'switchport access vlan '+vlan_num]
+        net_connect.send_config_set(config_command1)
+        if shut == str(1):
+            config_command2 = ['int '+a[i],'sh']
+            net_connect.send_config_set(config_command2)
+
+
+
+def audit_empty_ports():
+    output = net_connect.send_command('show vlan br | section default')
+    if str.__contains__(output,"Eth"):
+        a = input("Defaul vlan 1 de acik portlariniz bulunmakta. Baska vlan'e tasimak ister misiniz? EVET[1] HAYIR[2] ")
+        if a ==str(1):
+            do_move_ports()
+
+
+def do_trunk_native():
+
+    output = net_connect.send_command('show int trunk | grep next 5 Native')
+    print("**********************************************************************")
+    print(output)
+    print("**********************************************************************")
+    a = input("Native vlan 1 de bulunan arayüzleri giriniz. (Eth3/4,Eth2/1 gibi) ")
+    newNative = input("Yeni bir native vlan giriniz. ")
+
+    a = a.split(",")
+
+    for i in range(len(a)):
+
+        config_command2 = ['int '+a[i],'switchport trunk native vlan '+newNative]
+        net_connect.send_config_set(config_command2)
+
+
+
+
+
+def audit_trunk_natives():
+
+    output = net_connect.send_command('show int trunk | grep next 5 Native | section trunking')
+    liste = output.split("   ")
+    newList = []
+    a = ""
+    for i in range(len(liste)):
+        newList.append(liste[i].lstrip())
+
+    for i in range(len(newList)):
+        if newList[i]=='1':
+            a=input("Trunk portlardan native vlan'i 1 olarak yapılandirilmis portlar bulunmakta. Degistirmek ister misiniz? EVET[1] HAYIR[2] ")
+
+    if a==str(1):
+        do_trunk_native()
+
+
+
+# ************************************************************VLAN SECURITY END****************************************************************
+
+
+# ************************************************************TELNET DISABLING START*********************************************************************
+
+
+def do_disable_telnet():
+
+    config_commands = ['no feature telnet']
+    net_connect.send_config_set(config_commands)
+    print("Telnet erisimi kapatildi.")
+
+
+def audit_telnet():
+
+    output = net_connect.send_command('show feature | i telnetServer')
+    if str.__contains__(output,"enabled"):
+        a = input("Cihaza telnet erişimi açık durumda. Kapatmak ister misiniz? EVET[1] HAYIR[2]")
+        if a==str(1):
+            do_disable_telnet()
+        else:
+            pass
+
+
+# ************************************************************TELNET DISABLING END*********************************************************************
 
 
 
